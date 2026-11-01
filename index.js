@@ -1,6 +1,6 @@
 import express from "express"
 import cors from "cors"
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import 'dotenv/config'
 
 const app = express()
@@ -24,7 +24,7 @@ export async function connectToMongoDB() {
 const connectClient = await connectToMongoDB();
 const db = connectClient.db("studio-space");
 const facilitiesCollection = db.collection("studios");
-
+const facilitiesBookingCollection = db.collection("studiosBooking");
 
 app.post('/studios', async (req, res) => {
     const studiosData = req.body
@@ -32,16 +32,30 @@ app.post('/studios', async (req, res) => {
     res.send(result)
 })
 
-
-
 app.get('/studios', async (req, res) => {
-  try {
-    const result = await facilitiesCollection.find().toArray();
-    res.send( 'kotah koli',result); 
-  } catch (error) {
-    res.status(500).send({ message: "Failed to fetch facilities", error });
-  }
+ const result = await facilitiesCollection.find().toArray();
+    res.send(result);
 })
+
+
+app.get("/studios/:id", async (req, res) => {
+  const id = req.params.id;
+  console.log(id);
+  const result = await facilitiesCollection.findOne({
+    _id: new ObjectId(id)
+  });
+
+  res.send(result)
+  
+});
+
+app.post("/studios/booking", async(req, res) => {
+    const bookingData = req.body;
+    const result = await facilitiesBookingCollection.insertOne(bookingData)
+    res.send(result)
+})
+
+
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
