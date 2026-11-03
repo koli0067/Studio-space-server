@@ -95,19 +95,6 @@ app.get("/studios/:id", verifyToken, async (req, res) => {
   res.send(result);
 });
 
-
-// app.patch("/studios/:id", verifyToken, async (req, res) => {
-//   const { id } = req.params;
-//   const updateData = req.body;
-
-//   const result = await facilitiesCollection.updateOne(
-//     { _id: new ObjectId(id) },
-//     { $set: updateData }
-//   );
-
-//   res.send(result);
-// });
-
 app.patch("/studios/:id", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
