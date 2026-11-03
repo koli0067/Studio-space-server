@@ -96,10 +96,6 @@ app.get("/studios/:id", verifyToken, async (req, res) => {
 });
 
 
-// ===============================
-// UPDATE STUDIO
-// ===============================
-
 // app.patch("/studios/:id", verifyToken, async (req, res) => {
 //   const { id } = req.params;
 //   const updateData = req.body;
