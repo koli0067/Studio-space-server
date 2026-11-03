@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { MongoClient, ObjectId } from "mongodb";
 import "dotenv/config";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -15,15 +16,41 @@ await client.connect();
 console.log("You successfully connected to MongoDB!");
 
 const db = client.db("studio-space");
-
 const facilitiesCollection = db.collection("studios");
 const bookingsCollection = db.collection("bookings");
+
+
+const verifyToken = async(req, res, next) => {
+    const authHeader = req.headers.authorization;
+    
+    if(!authHeader){
+        return res.status(401).send({msg: "Unauthorized!"})
+    }
+
+   const token = authHeader.split(" ")[1]
+
+   if(!token){
+    return res.status(401).send({msg : "Unauthorized!"});
+   }
+
+   const JWKS = createRemoteJWKSet(new URL('http://localhost:3000/api/auth/jwks')) 
+
+   try {
+     const {payload} = await jwtVerify(token, JWKS);
+     next();
+   } catch (error) {
+    return res.status(500).send({msg: "Server Error!"});
+   }
+   
+    
+}
+
 
 // ===============================
 // ADD STUDIO
 // ===============================
 
-app.post("/studios", async (req, res) => {
+app.post("/studios", verifyToken , async (req, res) => {
   try {
     const studioData = req.body;
 
@@ -59,59 +86,63 @@ app.get("/studios", async (req, res) => {
 // GET SINGLE STUDIO
 // ===============================
 
-app.get("/studios/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid studio ID" });
-    }
-
-    const result = await facilitiesCollection.findOne({
-      _id: new ObjectId(id),
-    });
-
-    if (!result) {
-      return res.status(404).json({ message: "Studio not found" });
-    }
-
-    res.send(result);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch studio" });
-  }
+app.get("/studios/:id", verifyToken, async (req, res) => {
+    
+ const { id } = req.params;
+  const result = await facilitiesCollection.findOne({
+    _id: new ObjectId(id),
+  });
+  res.send(result);
 });
+
 
 // ===============================
 // UPDATE STUDIO
 // ===============================
 
-app.patch("/studios/:id", async (req, res) => {
+// app.patch("/studios/:id", verifyToken, async (req, res) => {
+//   const { id } = req.params;
+//   const updateData = req.body;
+
+//   const result = await facilitiesCollection.updateOne(
+//     { _id: new ObjectId(id) },
+//     { $set: updateData }
+//   );
+
+//   res.send(result);
+// });
+
+app.patch("/studios/:id", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const updateData = req.body;
 
+    // ১. আইডি সঠিক ফরম্যাটে আছে কি না চেক করা
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid studio ID" });
     }
 
-    const updateData = { ...req.body };
+    // ২. স্টুডিওটি ডাটাবেজে আছে কি না চেক করা
+    const studio = await facilitiesCollection.findOne({
+      _id: new ObjectId(id),
+    });
 
-    // Prevent changing MongoDB's _id through the request body.
-    delete updateData._id;
+    if (!studio) {
+      return res.status(404).json({ message: "Studio not found" });
+    }
 
+    // ৩. আপডেট অপারেশন চালানো
     const result = await facilitiesCollection.updateOne(
       { _id: new ObjectId(id) },
       { $set: updateData }
     );
-
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ message: "Studio not found" });
-    }
 
     res.json({
       message: "Studio updated successfully",
       result,
     });
   } catch (error) {
+    console.error("Update Error:", error);
     res.status(500).json({ message: "Failed to update studio" });
   }
 });
@@ -120,7 +151,7 @@ app.patch("/studios/:id", async (req, res) => {
 // DELETE STUDIO
 // ===============================
 
-app.delete("/studios/:id", async (req, res) => {
+app.delete("/studios/:id",verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -149,7 +180,7 @@ app.delete("/studios/:id", async (req, res) => {
 // GET MY STUDIOS
 // ===============================
 
-app.get("/my-studios/:email", async (req, res) => {
+app.get("/my-studios/:email",verifyToken, async (req, res) => {
   try {
     const email = req.params.email;
 
@@ -167,7 +198,7 @@ app.get("/my-studios/:email", async (req, res) => {
 // CREATE BOOKING
 // ===============================
 
-app.post("/studios/booking", async (req, res) => {
+app.post("/studios/booking",verifyToken , async (req, res) => {
   try {
     const {
       studioId,
@@ -327,7 +358,7 @@ app.post("/studios/booking", async (req, res) => {
 // GET MY BOOKINGS
 // ===============================
 
-app.get("/studios/booking/:email", async (req, res) => {
+app.get("/studios/booking/:email",verifyToken, async (req, res) => {
   try {
     const email = req.params.email;
 
@@ -348,7 +379,7 @@ app.get("/studios/booking/:email", async (req, res) => {
 // CANCEL PENDING BOOKING
 // ===============================
 
-app.patch("/studios/booking/:id/cancel", async (req, res) => {
+app.patch("/studios/booking/:id/cancel",verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { userEmail } = req.body;
