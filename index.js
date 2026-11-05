@@ -37,7 +37,7 @@ const verifyToken = async (req, res, next) => {
 // ADD STUDIO
 app.post("/studios", verifyToken, async (req, res) => {
   const {
-    name, categorySlug, description, image, location,
+    name, categorySlug, description, image,images, location,
     pricePerHour, securityDeposit, capacity, facilities,
     amenities, isAvailable, creatorEmail, creatorName
   } = req.body;
@@ -47,6 +47,7 @@ app.post("/studios", verifyToken, async (req, res) => {
     categorySlug,
     description,
     image,
+    images: images || [],
     location,
     pricePerHour: Number(pricePerHour),
     securityDeposit: Number(securityDeposit || 0),
@@ -69,8 +70,9 @@ app.get("/studios", async (req, res) => {
   res.send(result);
 });
 
+// verifyToken,
 
-app.get("/studios/:id", verifyToken, async (req, res) => {
+app.get("/studios/:id",  async (req, res) => {
   try {
     const { id } = req.params;
 
